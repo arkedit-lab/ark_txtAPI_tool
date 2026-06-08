@@ -90,6 +90,16 @@
   }
   #annotatedWithRuby ruby { ruby-align: center; }
   #annotatedWithRuby rt { font-size: 0.6em; color: #555; }
+  #annotatedWithRuby rt.fixed-ruby { color: #e07b00; }
+  .ruby-legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 10px;
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .legend-item { color: #888; }
+  .legend-item.fixed { color: #e07b00; }
   .output-row {
     display: flex;
     align-items: flex-start;
@@ -203,6 +213,16 @@
     outline: 2.5px dashed #4a6fa5;
     background: #f0f4fa;
   }
+  .info-note {
+    background: #fff8e1;
+    border-left: 3px solid #f0a500;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.82rem;
+    color: #5a4a00;
+    line-height: 1.7;
+  }
+  .info-note strong { font-weight: 700; }
 </style>
 </head>
 <body>
@@ -243,9 +263,21 @@
     </div>
   </div>
 
+  <!-- 注意事項 -->
+  <div class="info-note">
+    <strong>⚠️ ルビが消えないケースについて</strong><br>
+    以下の場合は学年設定に関わらずルビが振られることがあります。HTMLルビプレビューでは<span style="color:#e07b00;font-weight:700;">オレンジ色</span>で表示されます。<br>
+    ・<strong>熟字訓</strong>：漢字を個別に読んでも導き出せない読み方（例：今日→きょう、昨日→きのう、明日→あした）<br>
+    ・<strong>人名・固有名詞</strong>：人名用漢字や読み方が一般的でない漢字（例：太郎、花子 など）
+  </div>
+
   <!-- HTMLルビ -->
   <div class="card">
     <div class="card-label">HTMLルビ（プレビュー）<span id="loadingIndicator" class="loading-indicator" style="display:none">処理中...</span></div>
+    <div id="rubyLegend" class="ruby-legend" style="display:none">
+      <span class="legend-item">● 通常ルビ（学年設定で変わる）</span>
+      <span class="legend-item fixed">● 固定ルビ（熟字訓・固有名詞など）</span>
+    </div>
     <div id="annotatedWithRuby"></div>
   </div>
 
@@ -287,8 +319,10 @@
 </main>
 
 <footer>
-  <p>このツールは<a href="https://developer.yahoo.co.jp/webapi/jlp/" target="_blank" rel="noopener">Yahoo! JAPANのテキスト解析Web API</a>を使用しています。</p>
-  <p style="margin-top:6px;">入力されたテキストはルビ振り処理にのみ使用され、学習・保存はされません。</p>
+  <p>入力されたテキストはルビ振り処理にのみ使用され、学習・保存はされません。</p>
+  <!-- Begin Yahoo! JAPAN Web Services Attribution Snippet -->
+  <span style="margin:15px 15px 15px 15px"><a href="https://developer.yahoo.co.jp/sitemap/">Webサービス by Yahoo! JAPAN</a></span>
+  <!-- End Yahoo! JAPAN Web Services Attribution Snippet -->
 </footer>
 
 <script src="furigana.js"></script>

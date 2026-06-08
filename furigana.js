@@ -5,13 +5,13 @@ const [
   replaced, toSeparate, copyAnnotatedWithParen, copyReplaced, copySeparated,
   fileInput, fileName, loadingIndicator, clearBtn, inputCard,
   exportAnnotatedWithParen, exportReplaced, exportSeparated,
-  replacedRow, separatedRow
+  replacedRow, separatedRow, rubyLegend
 ] = [
   'grade', 'org', 'separated', 'annotatedWithRuby', 'annotatedWithParen',
   'replaced', 'toSeparate', 'copyAnnotatedWithParen', 'copyReplaced', 'copySeparated',
   'fileInput', 'fileName', 'loadingIndicator', 'clearBtn', 'inputCard',
   'exportAnnotatedWithParen', 'exportReplaced', 'exportSeparated',
-  'replacedRow', 'separatedRow'
+  'replacedRow', 'separatedRow', 'rubyLegend'
 ].map(id => document.getElementById(id));
 
 const isKatakanaWord = s => /^[ァ-ヶー]+$/.test(s);
@@ -26,58 +26,86 @@ const addKatakanaFurigana = words => words.map(w => {
 
 const putParen = (base, rubyText) => `${base}(${rubyText})`;
 
-const putRuby = (base, rubyText) => {
+const putRuby = (base, rubyText, isFixed = false) => {
   const annotated = document.createElement('ruby');
   const op = document.createElement('rp'); op.append('(');
-  const rt = document.createElement('rt'); rt.append(rubyText);
+  const rt = document.createElement('rt');
+  rt.append(rubyText);
+  if (isFixed) rt.classList.add('fixed-ruby');
   const cp = document.createElement('rp'); cp.append(')');
   annotated.append(base, op, rt, cp);
   return annotated;
+};
+
+const fetchWords = async (text, gradeNum) => {
+  const res = await fetch('/api/furigana', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: '1',
+      jsonrpc: '2.0',
+      method: 'jlp.furiganaservice.furigana',
+      params: { q: text, grade: gradeNum },
+    }),
+  });
+  return (await res.json())?.result?.word;
+};
+
+const buildFixedSet = (words8) => {
+  const set = new Set();
+  if (!Array.isArray(words8)) return set;
+  words8.forEach(w => {
+    if (w.furigana && w.surface !== w.furigana) set.add(w.surface);
+    if (w.subword) w.subword.forEach(s => {
+      if (s.furigana && s.surface !== s.furigana) set.add(s.surface);
+    });
+  });
+  return set;
 };
 
 const clearAll = () => {
   org.value = '';
   annotatedWithRuby.innerHTML = '';
   annotatedWithParen.value = replaced.value = separated.value = '';
-  fileName.textContent = 'TXT / DOCX / PDF';
+  fileName.textContent = 'TXT';
+  rubyLegend.style.display = 'none';
 };
 
 const applyFurigana = async () => {
   if (!org.value.trim()) {
     annotatedWithRuby.innerHTML = '';
     annotatedWithParen.value = replaced.value = separated.value = '';
+    rubyLegend.style.display = 'none';
     return;
   }
   loadingIndicator.style.display = 'inline';
   try {
     const gradeVal = Number(grade.value);
-    const response = await fetch('/api/furigana', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: '1',
-        jsonrpc: '2.0',
-        method: 'jlp.furiganaservice.furigana',
-        params: {
-          q: org.value,
-          grade: gradeVal === 0 ? 1 : gradeVal,
-        },
-      }),
-    });
+    const apiGrade = gradeVal === 0 ? 1 : gradeVal;
 
-    let words = (await response.json())?.result?.word;
-    if (Array.isArray(words) && gradeVal === 0) words = addKatakanaFurigana(words);
+    // grade=8未満の場合のみ grade=8 と並行取得して固定ルビを検出
+    const [words, words8] = apiGrade < 8
+      ? await Promise.all([fetchWords(org.value, apiGrade), fetchWords(org.value, 8)])
+      : [await fetchWords(org.value, apiGrade), null];
+
+    let processedWords = Array.isArray(words) ? [...words] : words;
+    if (Array.isArray(processedWords) && gradeVal === 0) {
+      processedWords = addKatakanaFurigana(processedWords);
+    }
+
+    const fixedSet = buildFixedSet(words8);
     annotatedWithRuby.innerHTML = '';
+    rubyLegend.style.display = fixedSet.size > 0 ? 'flex' : 'none';
 
-    if (Array.isArray(words)) {
-      const replacedWords = words.map(w => w.furigana || w.surface);
+    if (Array.isArray(processedWords)) {
+      const replacedWords = processedWords.map(w => w.furigana || w.surface);
       replaced.value = replacedWords.join('');
 
       separated.value = replacedWords.reduce((acc, token) => {
         return acc + ((acc.match(/\s$/) || token.match(/\s/)) ? '' : ' ') + token;
       }, '');
 
-      annotatedWithParen.value = words.map(w => {
+      annotatedWithParen.value = processedWords.map(w => {
         if (w.subword) {
           return w.subword.map(s =>
             (!s.furigana || s.surface === s.furigana) ? s.surface : putParen(s.surface, s.furigana)
@@ -86,17 +114,19 @@ const applyFurigana = async () => {
         return (!w.furigana || w.surface === w.furigana) ? w.surface : putParen(w.surface, w.furigana);
       }).join('');
 
-      words.reduce((paragraphs, w) => {
+      processedWords.reduce((paragraphs, w) => {
         if (w.surface === '\n') {
           paragraphs.push(document.createElement('p'));
         } else {
           const p = paragraphs[paragraphs.length - 1];
           if (w.subword) {
             w.subword.forEach(s => {
-              p.append((!s.furigana || s.surface === s.furigana) ? s.surface : putRuby(s.surface, s.furigana));
+              const isFixed = fixedSet.has(s.surface);
+              p.append((!s.furigana || s.surface === s.furigana) ? s.surface : putRuby(s.surface, s.furigana, isFixed));
             });
           } else {
-            p.append((!w.furigana || w.surface === w.furigana) ? w.surface : putRuby(w.surface, w.furigana));
+            const isFixed = fixedSet.has(w.surface);
+            p.append((!w.furigana || w.surface === w.furigana) ? w.surface : putRuby(w.surface, w.furigana, isFixed));
           }
         }
         return paragraphs;
