@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ルビ振りツール</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f7fa;
+    color: #333;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+  header {
+    max-width: 800px;
+    margin: 0 auto 24px;
+  }
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+  header p {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 4px;
+  }
+  main {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .card-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #888;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .row label { font-size: 0.88rem; color: #555; white-space: nowrap; }
+  select {
+    padding: 6px 10px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+  }
+  select:focus { border-color: #4a6fa5; }
+  textarea {
+    width: 100%;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 1rem;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+  }
+  textarea:focus { border-color: #4a6fa5; }
+  textarea[readonly] { background: #f9f9f9; color: #444; cursor: text; }
+  #annotatedWithRuby {
+    min-height: 60px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 1.1rem;
+    line-height: 2.2;
+    background: #f9f9f9;
+    word-break: break-all;
+  }
+  #annotatedWithRuby ruby { ruby-align: center; }
+  #annotatedWithRuby rt { font-size: 0.6em; color: #555; }
+  .output-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .output-row textarea { flex: 1; }
+  .btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .btn-copy {
+    padding: 8px 14px;
+    background: #4a6fa5;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .btn-copy:hover { background: #3a5a8a; }
+  .btn-copy:active { background: #2a4a7a; }
+  .btn-export {
+    padding: 8px 14px;
+    background: #5a9a6a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .btn-export:hover { background: #4a8a5a; }
+  .btn-export:active { background: #3a7a4a; }
+  .separate-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 4px;
+  }
+  .separate-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .btn-file {
+    display: inline-block;
+    padding: 7px 14px;
+    background: #6c757d;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .btn-file:hover { background: #5a6268; }
+  #fileInput { display: none; }
+  .file-name {
+    font-size: 0.82rem;
+    color: #888;
+  }
+  footer {
+    max-width: 800px;
+    margin: 32px auto 0;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #aaa;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📝 ルビ振りツール</h1>
+  <p>日本語テキストに自動でルビ（読みがな）を振ります</p>
+</header>
+
+<main>
+
+  <!-- 入力 -->
+  <div class="card">
+    <div class="card-label">入力</div>
+    <div class="row">
+      <label for="grade">ルビを振る学年：</label>
+      <select id="grade">
+        <option value="0">漢字全部＋カタカナ</option>
+        <option value="1">小学1年生以上の漢字</option>
+        <option value="2">小学2年生以上の漢字</option>
+        <option value="3">小学3年生以上の漢字</option>
+        <option value="4">小学4年生以上の漢字</option>
+        <option value="5">小学5年生以上の漢字</option>
+        <option value="6">小学6年生以上の漢字</option>
+        <option value="7">中学生以上の漢字</option>
+        <option value="8">一般向け（常用漢字以外）</option>
+      </select>
+    </div>
+    <div class="file-row">
+      <label class="btn-file" for="fileInput">📂 ファイル読み込み</label>
+      <input type="file" id="fileInput" accept=".txt,.docx,.pdf">
+      <span id="fileName" class="file-name">TXT / DOCX / PDF</span>
+    </div>
+    <textarea id="org" rows="6" placeholder="ルビを振りたいテキストをここに入力してください..."></textarea>
+  </div>
+
+  <!-- HTMLルビ -->
+  <div class="card">
+    <div class="card-label">HTMLルビ（プレビュー）</div>
+    <div id="annotatedWithRuby"></div>
+  </div>
+
+  <!-- 括弧ルビ -->
+  <div class="card">
+    <div class="card-label">括弧ルビ &nbsp;例：漢字(かんじ)</div>
+    <div class="output-row">
+      <textarea id="annotatedWithParen" rows="4" readonly placeholder="ここに結果が表示されます"></textarea>
+      <div class="btn-group">
+        <button class="btn-copy" id="copyAnnotatedWithParen">コピー</button>
+        <button class="btn-export" id="exportAnnotatedWithParen">TXT保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ひらがな / 分かち書き -->
+  <div class="card">
+    <div class="card-label">ひらがな置換 / 分かち書き</div>
+    <div class="separate-row">
+      <input type="checkbox" id="toSeparate" />
+      <label for="toSeparate">分かち書きに切り替える（単語の間にスペースを入れる）</label>
+    </div>
+    <div id="replacedRow" class="output-row" style="margin-top: 12px;">
+      <textarea id="replaced" rows="4" readonly placeholder="ここに結果が表示されます"></textarea>
+      <div class="btn-group">
+        <button class="btn-copy" id="copyReplaced">コピー</button>
+        <button class="btn-export" id="exportReplaced">TXT保存</button>
+      </div>
+    </div>
+    <div id="separatedRow" class="output-row" style="margin-top: 10px;">
+      <textarea id="separated" rows="4" readonly placeholder="ここに結果が表示されます"></textarea>
+      <div class="btn-group">
+        <button class="btn-copy" id="copySeparated">コピー</button>
+        <button class="btn-export" id="exportSeparated">TXT保存</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <p>このツールは<a href="https://developer.yahoo.co.jp/webapi/jlp/" target="_blank" rel="noopener">Yahoo! JAPANのテキスト解析Web API</a>を使用しています。</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="furigana.js"></script>
+</body>
+</html>
