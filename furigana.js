@@ -40,84 +40,83 @@ const putRuby = (base, rubyText) => {
   return annotated;
 };
 
+const applyFurigana = async () => {
+  if (!org.value.trim()) {
+    annotatedWithRuby.innerHTML = '';
+    annotatedWithParen.value = replaced.value = separated.value = '';
+    return;
+  }
+  try {
+    const gradeVal = Number(grade.value);
+    const response = await fetch('/api/furigana', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: '1',
+        jsonrpc: '2.0',
+        method: 'jlp.furiganaservice.furigana',
+        params: {
+          q: org.value,
+          grade: gradeVal === 0 ? 1 : gradeVal,
+        },
+      }),
+    });
+
+    let words = (await response.json())?.result?.word;
+    if (Array.isArray(words) && gradeVal === 0) words = addKatakanaFurigana(words);
+    annotatedWithRuby.innerHTML = '';
+
+    if (Array.isArray(words)) {
+      const replacedWords = words.map(w => w.furigana || w.surface);
+      replaced.value = replacedWords.join('');
+
+      separated.value = replacedWords.reduce((acc, token) => {
+        return acc + ((acc.match(/\s$/) || token.match(/\s/)) ? '' : ' ') + token;
+      }, '');
+
+      annotatedWithParen.value = words.map(w => {
+        if (w.subword) {
+          return w.subword.map(s =>
+            (!s.furigana || s.surface === s.furigana) ? s.surface : putParen(s.surface, s.furigana)
+          ).join('');
+        }
+        return (!w.furigana || w.surface === w.furigana) ? w.surface : putParen(w.surface, w.furigana);
+      }).join('');
+
+      words.reduce((paragraphs, w) => {
+        if (w.surface === '\n') {
+          paragraphs.push(document.createElement('p'));
+        } else {
+          const p = paragraphs[paragraphs.length - 1];
+          if (w.subword) {
+            w.subword.forEach(s => {
+              p.append((!s.furigana || s.surface === s.furigana) ? s.surface : putRuby(s.surface, s.furigana));
+            });
+          } else {
+            p.append((!w.furigana || w.surface === w.furigana) ? w.surface : putRuby(w.surface, w.furigana));
+          }
+        }
+        return paragraphs;
+      }, [document.createElement('p')]).forEach(p => annotatedWithRuby.append(p));
+
+    } else {
+      annotatedWithParen.value = replaced.value = separated.value = '';
+    }
+
+  } catch (err) {
+    console.error('Error:', err);
+  }
+};
+
 toSeparate.addEventListener('change', () => {
   const show = toSeparate.checked;
   replacedRow.style.display  = show ? 'none' : '';
   separatedRow.style.display = show ? '' : 'none';
-  (show ? separated : replaced).dispatchEvent(new Event('input'));
 });
 toSeparate.dispatchEvent(new Event('change'));
 
 [grade, org].forEach(el => {
-  el.addEventListener('input', async () => {
-    if (!org.value.trim()) {
-      annotatedWithRuby.innerHTML = '';
-      annotatedWithParen.value = replaced.value = separated.value = '';
-      return;
-    }
-    try {
-      const gradeVal = Number(grade.value);
-      const response = await fetch('/api/furigana', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: '1',
-          jsonrpc: '2.0',
-          method: 'jlp.furiganaservice.furigana',
-          params: {
-            q: org.value,
-            grade: gradeVal === 0 ? 1 : gradeVal,
-          },
-        }),
-      });
-
-      let words = (await response.json())?.result?.word;
-      if (Array.isArray(words) && gradeVal === 0) words = addKatakanaFurigana(words);
-      annotatedWithRuby.innerHTML = '';
-
-      if (Array.isArray(words)) {
-        const replacedWords = words.map(w => w.furigana || w.surface);
-        replaced.value = replacedWords.join('');
-
-        separated.value = replacedWords.reduce((acc, token) => {
-          return acc + ((acc.match(/\s$/) || token.match(/\s/)) ? '' : ' ') + token;
-        }, '');
-
-        annotatedWithParen.value = words.map(w => {
-          if (w.subword) {
-            return w.subword.map(s =>
-              (!s.furigana || s.surface === s.furigana) ? s.surface : putParen(s.surface, s.furigana)
-            ).join('');
-          }
-          return (!w.furigana || w.surface === w.furigana) ? w.surface : putParen(w.surface, w.furigana);
-        }).join('');
-
-        words.reduce((paragraphs, w) => {
-          if (w.surface === '\n') {
-            paragraphs.push(document.createElement('p'));
-          } else {
-            const p = paragraphs[paragraphs.length - 1];
-            if (w.subword) {
-              w.subword.forEach(s => {
-                p.append((!s.furigana || s.surface === s.furigana) ? s.surface : putRuby(s.surface, s.furigana));
-              });
-            } else {
-              p.append((!w.furigana || w.surface === w.furigana) ? w.surface : putRuby(w.surface, w.furigana));
-            }
-          }
-          return paragraphs;
-        }, [document.createElement('p')]).forEach(p => annotatedWithRuby.append(p));
-
-      } else {
-        annotatedWithParen.value = replaced.value = separated.value = '';
-      }
-
-      [annotatedWithParen, replaced, separated].forEach(ta => ta.dispatchEvent(new Event('input')));
-
-    } catch (err) {
-      console.error('Error:', err);
-    }
-  });
+  el.addEventListener('input', applyFurigana);
 });
 
 const copyText = async (text) => {
@@ -168,7 +167,7 @@ fileInput.addEventListener('change', async (e) => {
 
     org.value = text;
     fileName.textContent = file.name;
-    org.dispatchEvent(new Event('input'));
+    await applyFurigana();
   } catch (err) {
     fileName.textContent = '読み込みエラー';
     console.error(err);
