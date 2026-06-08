@@ -24,11 +24,6 @@ const addKatakanaFurigana = words => words.map(w => {
   return w.subword ? { ...w, subword: w.subword.map(fill) } : fill(w);
 });
 
-if (typeof pdfjsLib !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
-
 const putParen = (base, rubyText) => `${base}(${rubyText})`;
 
 const putRuby = (base, rubyText) => {
@@ -151,31 +146,13 @@ copySeparated.addEventListener('click',          () => copyText(separated.value)
 // File handling
 const handleFile = async (file) => {
   const ext = file.name.split('.').pop().toLowerCase();
-  if (!['txt', 'docx', 'pdf'].includes(ext)) {
-    fileName.textContent = '非対応形式（TXT/DOCX/PDFのみ）';
+  if (ext !== 'txt') {
+    fileName.textContent = '非対応形式（TXTのみ）';
     return;
   }
   fileName.textContent = '読み込み中...';
   try {
-    let text = '';
-    if (ext === 'txt') {
-      text = await file.text();
-    } else if (ext === 'docx') {
-      const arrayBuffer = await file.arrayBuffer();
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      text = result.value;
-    } else if (ext === 'pdf') {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const pages = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        pages.push(content.items.map(item => item.str).join(''));
-      }
-      text = pages.join('\n');
-    }
-    org.value = text;
+    org.value = await file.text();
     fileName.textContent = file.name;
     await applyFurigana();
   } catch (err) {
