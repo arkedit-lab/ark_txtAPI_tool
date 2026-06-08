@@ -3,13 +3,13 @@
 const [
   grade, org, separated, annotatedWithRuby, annotatedWithParen,
   replaced, toSeparate, copyAnnotatedWithParen, copyReplaced, copySeparated,
-  fileInput, fileName,
+  fileInput, fileName, loadingIndicator, clearBtn, inputCard,
   exportAnnotatedWithParen, exportReplaced, exportSeparated,
   replacedRow, separatedRow
 ] = [
   'grade', 'org', 'separated', 'annotatedWithRuby', 'annotatedWithParen',
   'replaced', 'toSeparate', 'copyAnnotatedWithParen', 'copyReplaced', 'copySeparated',
-  'fileInput', 'fileName',
+  'fileInput', 'fileName', 'loadingIndicator', 'clearBtn', 'inputCard',
   'exportAnnotatedWithParen', 'exportReplaced', 'exportSeparated',
   'replacedRow', 'separatedRow'
 ].map(id => document.getElementById(id));
@@ -40,12 +40,20 @@ const putRuby = (base, rubyText) => {
   return annotated;
 };
 
+const clearAll = () => {
+  org.value = '';
+  annotatedWithRuby.innerHTML = '';
+  annotatedWithParen.value = replaced.value = separated.value = '';
+  fileName.textContent = 'TXT / DOCX / PDF';
+};
+
 const applyFurigana = async () => {
   if (!org.value.trim()) {
     annotatedWithRuby.innerHTML = '';
     annotatedWithParen.value = replaced.value = separated.value = '';
     return;
   }
+  loadingIndicator.style.display = 'inline';
   try {
     const gradeVal = Number(grade.value);
     const response = await fetch('/api/furigana', {
@@ -105,6 +113,8 @@ const applyFurigana = async () => {
 
   } catch (err) {
     console.error('Error:', err);
+  } finally {
+    loadingIndicator.style.display = 'none';
   }
 };
 
@@ -118,6 +128,8 @@ toSeparate.dispatchEvent(new Event('change'));
 [grade, org].forEach(el => {
   el.addEventListener('input', applyFurigana);
 });
+
+clearBtn.addEventListener('click', clearAll);
 
 const copyText = async (text) => {
   try {
@@ -136,17 +148,16 @@ copyAnnotatedWithParen.addEventListener('click', () => copyText(annotatedWithPar
 copyReplaced.addEventListener('click',           () => copyText(replaced.value));
 copySeparated.addEventListener('click',          () => copyText(separated.value));
 
-// File reading
-fileInput.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
+// File handling
+const handleFile = async (file) => {
   const ext = file.name.split('.').pop().toLowerCase();
+  if (!['txt', 'docx', 'pdf'].includes(ext)) {
+    fileName.textContent = '非対応形式（TXT/DOCX/PDFのみ）';
+    return;
+  }
   fileName.textContent = '読み込み中...';
-
   try {
     let text = '';
-
     if (ext === 'txt') {
       text = await file.text();
     } else if (ext === 'docx') {
@@ -164,7 +175,6 @@ fileInput.addEventListener('change', async (e) => {
       }
       text = pages.join('\n');
     }
-
     org.value = text;
     fileName.textContent = file.name;
     await applyFurigana();
@@ -172,8 +182,31 @@ fileInput.addEventListener('change', async (e) => {
     fileName.textContent = '読み込みエラー';
     console.error(err);
   }
+};
 
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (file) await handleFile(file);
   fileInput.value = '';
+});
+
+// Drag and drop
+inputCard.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  inputCard.classList.add('drop-active');
+});
+
+inputCard.addEventListener('dragleave', (e) => {
+  if (!inputCard.contains(e.relatedTarget)) {
+    inputCard.classList.remove('drop-active');
+  }
+});
+
+inputCard.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  inputCard.classList.remove('drop-active');
+  const file = e.dataTransfer.files[0];
+  if (file) await handleFile(file);
 });
 
 // TXT export

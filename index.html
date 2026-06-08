@@ -169,6 +169,40 @@
     color: #aaa;
     line-height: 1.8;
   }
+  .hint-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .hint-text { font-size: 0.78rem; color: #bbb; }
+  .btn-clear {
+    padding: 5px 12px;
+    background: #fff;
+    color: #999;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-clear:hover { border-color: #e74c3c; color: #e74c3c; }
+  .loading-indicator {
+    font-size: 0.75rem;
+    color: #4a6fa5;
+    margin-left: 8px;
+    font-weight: normal;
+    letter-spacing: 0;
+    animation: blink 1s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .card.drop-active {
+    outline: 2.5px dashed #4a6fa5;
+    background: #f0f4fa;
+  }
 </style>
 </head>
 <body>
@@ -181,7 +215,7 @@
 <main>
 
   <!-- 入力 -->
-  <div class="card">
+  <div class="card" id="inputCard">
     <div class="card-label">入力</div>
     <div class="row">
       <label for="grade">ルビを振る学年：</label>
@@ -202,12 +236,16 @@
       <input type="file" id="fileInput" accept=".txt,.docx,.pdf">
       <span id="fileName" class="file-name">TXT / DOCX / PDF</span>
     </div>
-    <textarea id="org" rows="6" placeholder="ルビを振りたいテキストをここに入力してください..."></textarea>
+    <textarea id="org" rows="6" placeholder="ルビを振りたいテキストをここに入力、またはファイルをドラッグ＆ドロップしてください..."></textarea>
+    <div class="hint-row">
+      <span class="hint-text">推奨：5,000文字以内　※ルビが表示されない場合は文字数を減らして少しずつ試してください</span>
+      <button id="clearBtn" class="btn-clear">クリア</button>
+    </div>
   </div>
 
   <!-- HTMLルビ -->
   <div class="card">
-    <div class="card-label">HTMLルビ（プレビュー）</div>
+    <div class="card-label">HTMLルビ（プレビュー）<span id="loadingIndicator" class="loading-indicator" style="display:none">処理中...</span></div>
     <div id="annotatedWithRuby"></div>
   </div>
 
