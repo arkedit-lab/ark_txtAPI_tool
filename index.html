@@ -186,6 +186,8 @@
     margin-top: 8px;
   }
   .hint-text { font-size: 0.78rem; color: #bbb; }
+  #charCount { font-size: 0.78rem; color: #bbb; }
+  #charCount.over { color: #e74c3c; font-weight: 700; }
   .btn-clear {
     padding: 5px 12px;
     background: #fff;
@@ -259,6 +261,7 @@
     <textarea id="org" rows="6" placeholder="ルビを振りたいテキストをここに貼り付け、またはTXTファイルをドラッグ＆ドロップしてください..."></textarea>
     <div class="hint-row">
       <span class="hint-text">推奨：10,000文字以内　※ルビが表示されない場合は文字数を減らして少しずつ試してください</span>
+      <span id="charCount">0文字</span>
       <button id="clearBtn" class="btn-clear">クリア</button>
     </div>
   </div>

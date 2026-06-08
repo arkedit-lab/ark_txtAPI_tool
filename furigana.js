@@ -5,14 +5,20 @@ const [
   replaced, toSeparate, copyAnnotatedWithParen, copyReplaced, copySeparated,
   fileInput, fileName, loadingIndicator, clearBtn, inputCard,
   exportAnnotatedWithParen, exportReplaced, exportSeparated,
-  replacedRow, separatedRow, rubyLegend
+  replacedRow, separatedRow, rubyLegend, charCount
 ] = [
   'grade', 'org', 'separated', 'annotatedWithRuby', 'annotatedWithParen',
   'replaced', 'toSeparate', 'copyAnnotatedWithParen', 'copyReplaced', 'copySeparated',
   'fileInput', 'fileName', 'loadingIndicator', 'clearBtn', 'inputCard',
   'exportAnnotatedWithParen', 'exportReplaced', 'exportSeparated',
-  'replacedRow', 'separatedRow', 'rubyLegend'
+  'replacedRow', 'separatedRow', 'rubyLegend', 'charCount'
 ].map(id => document.getElementById(id));
+
+const updateCharCount = () => {
+  const len = org.value.length;
+  charCount.textContent = `${len.toLocaleString()}文字`;
+  charCount.classList.toggle('over', len > 10000);
+};
 
 const isKatakanaWord = s => /^[ァ-ヶー]+$/.test(s);
 const katakanaToHiragana = s => s.replace(/[ァ-ヶ]/g, c =>
@@ -69,6 +75,7 @@ const clearAll = () => {
   annotatedWithParen.value = replaced.value = separated.value = '';
   fileName.textContent = 'TXT';
   rubyLegend.style.display = 'none';
+  updateCharCount();
 };
 
 const applyFurigana = async () => {
@@ -150,6 +157,9 @@ toSeparate.addEventListener('change', () => {
 });
 toSeparate.dispatchEvent(new Event('change'));
 
+org.addEventListener('input', updateCharCount);
+updateCharCount();
+
 [grade, org].forEach(el => {
   el.addEventListener('input', applyFurigana);
 });
@@ -184,6 +194,7 @@ const handleFile = async (file) => {
   try {
     org.value = await file.text();
     fileName.textContent = file.name;
+    updateCharCount();
     await applyFurigana();
   } catch (err) {
     fileName.textContent = '読み込みエラー';
